@@ -1,4 +1,4 @@
-package xyz.hyperreal.validator
+package com.vinctus.validator
 
 import scala.scalajs.js.Dynamic
 import scalajs.js

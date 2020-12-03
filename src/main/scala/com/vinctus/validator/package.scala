@@ -1,4 +1,4 @@
-package xyz.hyperreal
+package com.vinctus
 
 package object validator {
 
