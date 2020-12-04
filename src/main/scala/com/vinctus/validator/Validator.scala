@@ -4,6 +4,7 @@ import scala.collection.mutable.ListBuffer
 import scalajs.js
 import js.JSConverters._
 import scala.scalajs.js.UndefOr
+import scala.util.matching.Regex
 
 object validObject extends scala.Dynamic {
 
@@ -93,11 +94,26 @@ class NumberValidator extends RangeValidator[Double]("double", _ == _, _ <= _) {
 
 class StringValidator extends RangeValidator[String]("string", _ == _, _ <= _) {
 
+  private var _regex: Option[Regex] = None
+  private var _pattern: String = _
+
   def validateDefined(v: Any): Result[String] = {
     v match {
-      case x: String => validateRange(x)
-      case _         => invalid
+      case x: String =>
+        validateRange(x) match {
+          case r: Invalid[String] => r
+          case r: Valid[String] =>
+            if (_regex.isEmpty || _regex.get.matches(x)) r
+            else Invalid(s"doesn't match pattern '${_pattern}'")
+        }
+      case _ => invalid
     }
+  }
+
+  override def regex(pattern: String): Validator[String] = {
+    _pattern = pattern
+    _regex = Some(pattern.r)
+    this
   }
 
 }
@@ -147,6 +163,8 @@ abstract class Validator[T](typeName: String) {
   def min(v: T): Validator[T] = sys.error("min() is not defined for this type")
 
   def max(v: T): Validator[T] = sys.error("max() is not defined for this type")
+
+  def regex(pattern: String): Validator[T] = sys.error("regex() is not defined for this type")
 
 }
 

@@ -10,7 +10,7 @@ object Main extends App {
   println(
     validObject(a = validNumber.required.min(123),
                 b = validObject(ba = validInt.required).stripUnknown,
-                c = validString.valid("a", "asdf").required).stripUnknown
+                c = validString.regex("a.*").required).stripUnknown
       .validate(x)
       .json)
 
