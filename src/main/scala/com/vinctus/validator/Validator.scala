@@ -9,7 +9,6 @@ object validObject extends scala.Dynamic {
 
   def applyDynamicNamed(name: String)(fields: (String, Validator[_])*): ObjectValidator = {
     require(name == "apply", "write validObject(field1 = <validation>, ...)")
-
     new ObjectValidator(fields.toList)
   }
 
@@ -107,7 +106,7 @@ class BooleanValidator extends PrimitiveValidator[Boolean]("boolean", _ == _) {
 
   def validateDefined(v: Any): Result[Boolean] = {
     v match {
-      case x: Boolean => validatePrimitiveDefined(x)
+      case x: Boolean => validatePrimitive(x)
       case _          => invalid
     }
   }
@@ -160,7 +159,7 @@ abstract class PrimitiveValidator[T](typeName: String, eq: (T, T) => Boolean) ex
     this
   }
 
-  protected def validatePrimitiveDefined(v: T): Result[T] =
+  protected def validatePrimitive(v: T): Result[T] =
     if (_valid.isEmpty || _valid.exists(a => eq(v, a))) Valid(v)
     else Invalid(s"not one of the valid values of ${_valid map (a => s"'$a'") mkString ", "}")
 
@@ -185,7 +184,7 @@ abstract class RangeValidator[T](typeName: String, eq: (T, T) => Boolean, lte: (
   protected def validateRange(v: T): Result[T] =
     if (_min.isEmpty || lte(_min.get, v))
       if (_max.isEmpty || lte(v, _max.get))
-        validatePrimitiveDefined(v)
+        validatePrimitive(v)
       else
         Invalid(s"above max value of '${_max}'")
     else
