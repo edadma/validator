@@ -39,7 +39,7 @@ libraryDependencies ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "org.scala-js" %%% "scalajs-java-time" % "1.0.0"
+  "io.github.cquiroz" %%% "scala-java-time" % "2.0.0"
 )
 
 mainClass in (Compile, run) := Some( s"${organization.value}.${name.value.replace('-', '_')}.Main" )

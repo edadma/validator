@@ -10,4 +10,6 @@ package object validator {
 
   def validString = new StringValidator
 
+  def validDateString = new DateStringValidator
+
 }
