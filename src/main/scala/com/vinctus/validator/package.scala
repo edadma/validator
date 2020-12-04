@@ -4,7 +4,7 @@ package object validator {
 
   def validInt = new IntValidator
 
-  def validDouble = new DoubleValidator
+  def validNumber = new NumberValidator
 
   def validBoolean = new BooleanValidator
 

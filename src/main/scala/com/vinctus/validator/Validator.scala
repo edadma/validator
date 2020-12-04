@@ -15,10 +15,26 @@ object validObject extends scala.Dynamic {
 
 }
 
-abstract class Result[T] { def json: String }
-case class Invalid[T](reason: String) extends Result[T] { def json: String = s"""Invalid("$reason")""" }
+sealed abstract class Result[T] {
+  def json: String
+
+  def valid: Boolean
+
+  def value: js.UndefOr[T]
+}
+
+case class Invalid[T](reason: String) extends Result[T] {
+  def json: String = s"""Invalid("$reason")"""
+
+  val valid = false
+
+  def value: js.UndefOr[T] = sys.error("invalid")
+}
+
 case class Valid[T](value: js.UndefOr[T]) extends Result[T] {
   def json = s"Valid(${js.JSON.stringify(value.asInstanceOf[js.Any], null.asInstanceOf[js.Array[js.Any]], 2)})"
+
+  val valid = true
 }
 
 class ObjectValidator(fields: List[(String, Validator[_])]) extends Validator[js.Object]("object") {
@@ -54,11 +70,7 @@ class ObjectValidator(fields: List[(String, Validator[_])]) extends Validator[js
 
 }
 
-class IntValidator extends RangeValidator[Int]("integer") {
-
-  def validateMin(v: Int, min: Int): Boolean = v >= min
-
-  def validateMax(v: Int, max: Int): Boolean = v <= max
+class IntValidator extends RangeValidator[Int]("integer", _ == _, _ <= _) {
 
   def validateDefined(v: Any): Result[Int] = {
     v match {
@@ -69,11 +81,7 @@ class IntValidator extends RangeValidator[Int]("integer") {
 
 }
 
-class DoubleValidator extends RangeValidator[Double]("double") {
-
-  def validateMin(v: Double, min: Double): Boolean = v >= min
-
-  def validateMax(v: Double, max: Double): Boolean = v <= max
+class NumberValidator extends RangeValidator[Double]("double", _ == _, _ <= _) {
 
   def validateDefined(v: Any): Result[Double] = {
     v match {
@@ -84,11 +92,7 @@ class DoubleValidator extends RangeValidator[Double]("double") {
 
 }
 
-class StringValidator extends RangeValidator[String]("string") {
-
-  def validateMin(v: String, min: String): Boolean = v >= min
-
-  def validateMax(v: String, max: String): Boolean = v <= max
+class StringValidator extends RangeValidator[String]("string", _ == _, _ <= _) {
 
   def validateDefined(v: Any): Result[String] = {
     v match {
@@ -99,11 +103,11 @@ class StringValidator extends RangeValidator[String]("string") {
 
 }
 
-class BooleanValidator extends Validator[Boolean]("boolean") {
+class BooleanValidator extends PrimitiveValidator[Boolean]("boolean", _ == _) {
 
   def validateDefined(v: Any): Result[Boolean] = {
     v match {
-      case x: Boolean => Valid(x)
+      case x: Boolean => validatePrimitiveDefined(x)
       case _          => invalid
     }
   }
@@ -113,7 +117,6 @@ class BooleanValidator extends Validator[Boolean]("boolean") {
 abstract class Validator[T](typeName: String) {
 
   protected var _required = false
-  protected val _valid = new ListBuffer[T]
   protected var _default: js.UndefOr[T] = js.undefined
 
   def validate(v: Any): Result[T] =
@@ -135,10 +138,7 @@ abstract class Validator[T](typeName: String) {
     this
   }
 
-  def valid(vs: T*): Validator[T] = {
-    _valid ++= vs
-    this
-  }
+  def valid(vs: T*): Validator[T] = sys.error("valid() is not defined for this type")
 
   def default(v: T): Validator[T] = {
     _default = v
@@ -151,7 +151,23 @@ abstract class Validator[T](typeName: String) {
 
 }
 
-abstract class RangeValidator[T](typeName: String) extends Validator[T](typeName) {
+abstract class PrimitiveValidator[T](typeName: String, eq: (T, T) => Boolean) extends Validator[T](typeName) {
+
+  protected val _valid = new ListBuffer[T]
+
+  override def valid(vs: T*): Validator[T] = {
+    _valid ++= vs
+    this
+  }
+
+  protected def validatePrimitiveDefined(v: T): Result[T] =
+    if (_valid.isEmpty || _valid.exists(a => eq(v, a))) Valid(v)
+    else Invalid(s"not one of the valid values of ${_valid map (a => s"'$a'") mkString ", "}")
+
+}
+
+abstract class RangeValidator[T](typeName: String, eq: (T, T) => Boolean, lte: (T, T) => Boolean)
+    extends PrimitiveValidator[T](typeName, eq) {
 
   protected var _min: js.UndefOr[T] = js.undefined
   protected var _max: js.UndefOr[T] = js.undefined
@@ -166,17 +182,13 @@ abstract class RangeValidator[T](typeName: String) extends Validator[T](typeName
     this
   }
 
-  protected def validateMin(v: T, min: T): Boolean
-
-  protected def validateMax(v: T, max: T): Boolean
-
   protected def validateRange(v: T): Result[T] =
-    if (_min.isEmpty || validateMin(v, _min.get))
-      if (_max.isEmpty || validateMax(v, _max.get))
-        Valid(v)
+    if (_min.isEmpty || lte(_min.get, v))
+      if (_max.isEmpty || lte(v, _max.get))
+        validatePrimitiveDefined(v)
       else
-        Invalid("above max value")
+        Invalid(s"above max value of '${_max}'")
     else
-      Invalid("below min value")
+      Invalid(s"below min value of '${_min}'")
 
 }
