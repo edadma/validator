@@ -2,7 +2,7 @@ package com.vinctus
 
 package object validator {
 
-  def validInt = new IntValidator
+//  def validInt = new IntValidator
 
   def validNumber = new NumberValidator
 

@@ -9,6 +9,7 @@ import scala.util.matching.Regex
 import java.time.ZonedDateTime
 
 object validObject extends scala.Dynamic {
+
   def applyDynamicNamed(name: String)(fields: (String, Validator[_, _])*): ObjectValidator = {
     require(name == "apply", "write validObject(field1 = <validation>, ...)")
     new ObjectValidator(fields.toList)
@@ -21,18 +22,19 @@ sealed abstract class Result[R] {
 
   def valid: Boolean
 
-  def value: js.UndefOr[R]
+  def value: js.UndefOr[R] = sys.error("invalid")
+
+  private[validator] def validate(test: Boolean, error: String): Result[R] =
+    if (!valid || test) this else Invalid(error)
 }
 
 case class Invalid[R](reason: String) extends Result[R] {
   def json: String = s"""Invalid("$reason")"""
 
   val valid = false
-
-  def value: js.UndefOr[R] = sys.error("invalid")
 }
 
-case class Valid[R](value: js.UndefOr[R]) extends Result[R] {
+case class Valid[R](override val value: js.UndefOr[R]) extends Result[R] {
   def json = s"Valid(${js.JSON.stringify(value.asInstanceOf[js.Any], null.asInstanceOf[js.Array[js.Any]], 2)})"
 
   val valid = true
@@ -71,24 +73,54 @@ class ObjectValidator(fields: List[(String, Validator[_, _])]) extends Validator
 
 }
 
-class IntValidator extends RangeValidator[Int, Int]("integer", _ == _, _ <= _) {
+//class IntValidator extends RangeValidator[Int, Int]("integer", _ == _, _ <= _) {
+//
+//  def validateDefined(v: Any): Result[Int] = {
+//    v match {
+//      case x: Int => validateRange(x)
+//      case _      => invalid
+//    }
+//  }
+//
+//}
 
-  def validateDefined(v: Any): Result[Int] = {
-    v match {
-      case x: Int => validateRange(x)
-      case _      => invalid
-    }
-  }
+class NumberValidator extends RangeValidator[Double, Double]("number", _ == _, _ <= _) {
 
-}
-
-class NumberValidator extends RangeValidator[Double, Double]("double", _ == _, _ <= _) {
+  var _integer = false
+  var _positive = false
+  var _negative = false
+  var _nonnegative = false
 
   def validateDefined(v: Any): Result[Double] = {
     v match {
-      case x: Double => validateRange(x)
-      case _         => invalid
+      case x: Double =>
+        validateRange(x)
+          .validate(!_integer || x.isValidInt, "not an integer")
+          .validate(!_positive || x > 0, "not positive")
+          .validate(!_negative || x < 0, "not negative")
+          .validate(!_nonnegative || x >= 0, "not non-negative")
+      case _ => invalid
     }
+  }
+
+  def integer: NumberValidator = {
+    _integer = true
+    this
+  }
+
+  def positive: NumberValidator = {
+    _positive = true
+    this
+  }
+
+  def negative: NumberValidator = {
+    _negative = true
+    this
+  }
+
+  def nonnegative: NumberValidator = {
+    _nonnegative = true
+    this
   }
 
 }
@@ -118,24 +150,19 @@ class StringValidator extends RangeValidator[String, String]("string", _ == _, _
   def validateDefined(v: Any): Result[String] = {
     v match {
       case s: String =>
-        validateRange(s) match {
-          case r: Invalid[String] => r
-          case r: Valid[String] =>
-            if (_regex.isEmpty || _regex.get.matches(s))
-              if (!_alphanum || s.forall(_.isLetterOrDigit)) r
-              else Invalid("not alphanumeric")
-            else Invalid(s"doesn't match pattern '${_pattern}'")
-        }
+        validateRange(s)
+          .validate(_regex.isEmpty || _regex.get.matches(s), s"doesn't match pattern '${_pattern}'")
+          .validate(!_alphanum || s.forall(_.isLetterOrDigit), "not alphanumeric")
       case _ => invalid
     }
   }
 
-  override def alphanum: Validator[String, String] = {
+  def alphanum: StringValidator = {
     _alphanum = true
     this
   }
 
-  override def regex(pattern: String): Validator[String, String] = {
+  def regex(pattern: String): StringValidator = {
     _pattern = pattern
     _regex = Some(pattern.r)
     this
@@ -178,20 +205,10 @@ abstract class Validator[T, R](typeName: String) {
     this
   }
 
-  def valid(vs: T*): Validator[T, R] = sys.error("valid() is not defined for this type")
-
   def default(v: R): Validator[T, R] = {
     _default = v
     this
   }
-
-  def min(v: T): Validator[T, R] = sys.error("min() is not defined for this type")
-
-  def max(v: T): Validator[T, R] = sys.error("max() is not defined for this type")
-
-  def regex(pattern: String): Validator[T, R] = sys.error("regex() is not defined for this type")
-
-  def alphanum: Validator[T, R] = sys.error("alphanum() is not defined for this type")
 
 }
 
@@ -199,7 +216,7 @@ abstract class PrimitiveValidator[T, R](typeName: String, eq: (T, T) => Boolean)
 
   protected val _valid = new ListBuffer[T]
 
-  override def valid(vs: T*): Validator[T, R] = {
+  def valid(vs: T*): PrimitiveValidator[T, R] = {
     _valid ++= vs
     this
   }
@@ -216,12 +233,12 @@ abstract class RangeValidator[T, R](typeName: String, eq: (T, T) => Boolean, lte
   protected var _min: js.UndefOr[T] = js.undefined
   protected var _max: js.UndefOr[T] = js.undefined
 
-  override def min(v: T): RangeValidator[T, R] = {
+  def min(v: T): RangeValidator[T, R] = {
     _min = v
     this
   }
 
-  override def max(v: T): RangeValidator[T, R] = {
+  def max(v: T): RangeValidator[T, R] = {
     _max = v
     this
   }

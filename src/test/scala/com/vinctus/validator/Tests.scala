@@ -8,10 +8,10 @@ import scala.scalajs.js
 class Tests extends AnyFreeSpec with Matchers with Testing {
 
   "int" in {
-    val v = validInt.required.min(5).max(200)
+    val v = validNumber.integer.min(5).max(200).required
 
     test("123", v) shouldBe "Valid(123)"
-    v.validate(js.undefined).json shouldBe "Invalid(\"integer required\")"
+    v.validate(js.undefined).json shouldBe "Invalid(\"number required\")"
     test("4", v) shouldBe "Invalid(\"below min value of '5'\")"
     test("201", v) shouldBe "Invalid(\"above max value of '200'\")"
     test("123.4", v) shouldBe "Invalid(\"not an integer\")"
@@ -25,17 +25,17 @@ class Tests extends AnyFreeSpec with Matchers with Testing {
   }
 
   "simple object" in {
-    test("""{"a": 123}""", validObject(a = validInt)) shouldBe
+    test("""{"a": 123}""", validObject(a = validNumber.integer)) shouldBe
       """
         |Valid({
         |  "a": 123
         |})
       """.trim.stripMargin
-    test("""{"a": 123.4}""", validObject(a = validInt)) shouldBe "Invalid(\"field 'a': not an integer\")"
+    test("""{"a": 123.4}""", validObject(a = validNumber.integer)) shouldBe "Invalid(\"field 'a': not an integer\")"
   }
 
   "complex object" in {
-    val v = validObject(a = validNumber.required.min(123),
+    val v = validObject(a = validNumber.min(123).required,
                         b = validObject(ba = validDateString.max("2021")),
                         c = validString.regex("a.*").required).stripUnknown
 
