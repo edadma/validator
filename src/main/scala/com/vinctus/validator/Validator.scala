@@ -135,8 +135,8 @@ abstract class Validator[T](typeName: String) {
     this
   }
 
-  def valid(v: T): Validator[T] = {
-    _valid += v
+  def valid(vs: T*): Validator[T] = {
+    _valid ++= vs
     this
   }
 
