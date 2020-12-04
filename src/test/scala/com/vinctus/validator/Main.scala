@@ -9,11 +9,11 @@ object Main extends App {
 
   println(
     validObject(a = validNumber.required.min(123),
-                b = validObject(ba = validDateString.required).stripUnknown,
+                b = validObject(ba = validDateString.max("2021")),
                 c = validString.regex("a.*").required).stripUnknown
       .validate(x)
       .json)
 
-//  println(validInt.required.validate(js.undefined))
+//  println(validEmptyObject.required.validate(js.undefined))
 
 }

@@ -9,7 +9,6 @@ import scala.util.matching.Regex
 import java.time.ZonedDateTime
 
 object validObject extends scala.Dynamic {
-
   def applyDynamicNamed(name: String)(fields: (String, Validator[_, _])*): ObjectValidator = {
     require(name == "apply", "write validObject(field1 = <validation>, ...)")
     new ObjectValidator(fields.toList)
@@ -114,6 +113,7 @@ class StringValidator extends RangeValidator[String, String]("string", _ == _, _
 
   private var _regex: Option[Regex] = None
   private var _pattern: String = _
+  private var _alphanum = false
 
   def validateDefined(v: Any): Result[String] = {
     v match {
@@ -121,11 +121,18 @@ class StringValidator extends RangeValidator[String, String]("string", _ == _, _
         validateRange(s) match {
           case r: Invalid[String] => r
           case r: Valid[String] =>
-            if (_regex.isEmpty || _regex.get.matches(s)) r
+            if (_regex.isEmpty || _regex.get.matches(s))
+              if (!_alphanum || s.forall(_.isLetterOrDigit)) r
+              else Invalid("not alphanumeric")
             else Invalid(s"doesn't match pattern '${_pattern}'")
         }
       case _ => invalid
     }
+  }
+
+  override def alphanum: Validator[String, String] = {
+    _alphanum = true
+    this
   }
 
   override def regex(pattern: String): Validator[String, String] = {
@@ -164,6 +171,8 @@ abstract class Validator[T, R](typeName: String) {
 
   protected def validateDefined(v: Any): Result[R]
 
+  protected def convert(a: T): R = a.asInstanceOf[R]
+
   def required: Validator[T, R] = {
     _required = true
     this
@@ -182,7 +191,7 @@ abstract class Validator[T, R](typeName: String) {
 
   def regex(pattern: String): Validator[T, R] = sys.error("regex() is not defined for this type")
 
-  protected def convert(a: T): R = a.asInstanceOf[R]
+  def alphanum: Validator[T, R] = sys.error("alphanum() is not defined for this type")
 
 }
 
@@ -213,7 +222,7 @@ abstract class RangeValidator[T, R](typeName: String, eq: (T, T) => Boolean, lte
   }
 
   override def max(v: T): RangeValidator[T, R] = {
-    _min = v
+    _max = v
     this
   }
 

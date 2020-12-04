@@ -6,7 +6,7 @@ scalaVersion := "2.13.4"
 
 scalacOptions ++= Seq( "-deprecation", "-feature", "-unchecked", "-language:postfixOps", "-language:implicitConversions", "-language:existentials", "-language:dynamics")
 
-organization := "xyz.hyperreal"
+organization := "com.vinctus"
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
@@ -18,9 +18,9 @@ enablePlugins(ScalaJSPlugin)
 
 enablePlugins(ScalablyTypedConverterPlugin)
 
-Test / scalaJSUseMainModuleInitializer := true
-
-Test / scalaJSUseTestModuleInitializer := false
+//Test / scalaJSUseMainModuleInitializer := true
+//
+//Test / scalaJSUseTestModuleInitializer := false
 
 scalaJSUseMainModuleInitializer := true
 

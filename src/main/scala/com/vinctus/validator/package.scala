@@ -12,4 +12,6 @@ package object validator {
 
   def validDateString = new DateStringValidator
 
+  def validEmptyObject = new ObjectValidator(Nil)
+
 }
