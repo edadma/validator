@@ -91,15 +91,18 @@ class NumberValidator extends RangeValidator[Double, Double]("number", _ == _, _
   var _negative = false
   var _nonnegative = false
 
+  private def validateDouble(x: Double) =
+    validateRange(x)
+      .validate(!_integer || x.isValidInt, "not an integer")
+      .validate(!_positive || x > 0, "not positive")
+      .validate(!_negative || x < 0, "not negative")
+      .validate(!_nonnegative || x >= 0, "not non-negative")
+
   def validateDefined(v: Any): Result[Double] = {
     v match {
-      case x: Double =>
-        validateRange(x)
-          .validate(!_integer || x.isValidInt, "not an integer")
-          .validate(!_positive || x > 0, "not positive")
-          .validate(!_negative || x < 0, "not negative")
-          .validate(!_nonnegative || x >= 0, "not non-negative")
-      case _ => invalid
+      case s: String if !_strict => validateDouble(java.lang.Double.parseDouble(s))
+      case x: Double             => validateDouble(x)
+      case _                     => invalid
     }
   }
 
@@ -184,6 +187,7 @@ class BooleanValidator extends PrimitiveValidator[Boolean, Boolean]("boolean", _
 abstract class Validator[T, R](typeName: String) {
 
   protected var _required = false
+  protected var _strict = false
   protected var _default: js.UndefOr[R] = js.undefined
 
   def validate(v: Any): Result[R] =
@@ -202,6 +206,11 @@ abstract class Validator[T, R](typeName: String) {
 
   def required: Validator[T, R] = {
     _required = true
+    this
+  }
+
+  def strict: Validator[T, R] = {
+    _strict = true
     this
   }
 

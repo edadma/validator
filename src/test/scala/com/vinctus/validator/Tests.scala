@@ -8,13 +8,14 @@ import scala.scalajs.js
 class Tests extends AnyFreeSpec with Matchers with Testing {
 
   "int" in {
-    val v = validNumber.integer.min(5).max(200).required
+    val v = validNumber.integer.min(5).max(200).required.strict
 
     test("123", v) shouldBe "Valid(123)"
     v.validate(js.undefined).json shouldBe "Invalid(\"number required\")"
     test("4", v) shouldBe "Invalid(\"below min value of '5'\")"
     test("201", v) shouldBe "Invalid(\"above max value of '200'\")"
     test("123.4", v) shouldBe "Invalid(\"not an integer\")"
+    test("\"123.4\"", v) shouldBe "Invalid(\"not a number\")"
   }
 
   "empty object" in {
@@ -42,7 +43,7 @@ class Tests extends AnyFreeSpec with Matchers with Testing {
     test(
       """
         |{
-        |  "a": 123,
+        |  "a": "123",
         |  "b": {
         |    "ba": "2020-12-04T19:48:40.513Z",
         |    "bb": 567
