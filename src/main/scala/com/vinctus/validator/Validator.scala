@@ -55,7 +55,7 @@ class ObjectValidator(fields: List[(String, Validator[_, _])]) extends Validator
           v.validate(d.get(f).orUndefined) match {
             case Invalid(reason) => return Invalid(s"field '$f': $reason")
             case Valid(value) =>
-              if (value ne v.asInstanceOf[UndefOr[Any]]) d(f) = value
+              if (value.isDefined && value != v.asInstanceOf[UndefOr[Any]]) d(f) = value
           }
 
         if (_stripUnknown)
