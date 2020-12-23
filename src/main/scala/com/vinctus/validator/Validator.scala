@@ -5,12 +5,12 @@ import scalajs.js
 import js.JSConverters._
 import scala.scalajs.js.UndefOr
 import scala.util.matching.Regex
-
-import java.time.ZonedDateTime
+import java.time.{Instant, ZonedDateTime}
+import java.time.temporal.Temporal
 
 object validObject extends scala.Dynamic {
 
-  def applyDynamicNamed(name: String)(fields: (String, Validator[_, _])*): ObjectValidator = {
+  def applyDynamicNamed(name: String)(fields: (String, Validator[_, _])*): ObjectValidator[_ <: js.Object] = {
     require(name == "apply", "write validObject(field1 = <validation>, ...)")
     new ObjectValidator(fields.toList)
   }
@@ -40,13 +40,14 @@ case class Valid[R](override val value: js.UndefOr[R]) extends Result[R] {
   val valid = true
 }
 
-class ObjectValidator(fields: List[(String, Validator[_, _])]) extends Validator[js.Object, js.Object]("object") {
+class ObjectValidator[O <: js.Object](fields: List[(String, Validator[_, _])])
+    extends Validator[js.Object, O]("object") {
 
   private val fieldSet = fields map (_._1) toSet
 
   private var _stripUnknown = false
 
-  def validateDefined(v: Any): Result[js.Object] = {
+  def validateDefined(v: Any): Result[O] = {
     v match {
       case x: js.Object =>
         val d = js.Object.assign(new js.Object, x).asInstanceOf[js.Dictionary[Any]]
@@ -61,28 +62,17 @@ class ObjectValidator(fields: List[(String, Validator[_, _])]) extends Validator
         if (_stripUnknown)
           d.keySet diff fieldSet foreach d.remove
 
-        Valid(d.asInstanceOf[js.UndefOr[js.Object]])
+        Valid(d.asInstanceOf[js.UndefOr[O]])
       case _ => Invalid("not an object")
     }
   }
 
-  def stripUnknown: ObjectValidator = {
+  def stripUnknown: ObjectValidator[O] = {
     _stripUnknown = true
     this
   }
 
 }
-
-//class IntValidator extends RangeValidator[Int, Int]("integer", _ == _, _ <= _) {
-//
-//  def validateDefined(v: Any): Result[Int] = {
-//    v match {
-//      case x: Int => validateRange(x)
-//      case _      => invalid
-//    }
-//  }
-//
-//}
 
 class NumberValidator extends RangeValidator[Double, Double]("number", _ == _, _ <= _) {
 
@@ -128,19 +118,27 @@ class NumberValidator extends RangeValidator[Double, Double]("number", _ == _, _
 
 }
 
-class DateStringValidator extends RangeValidator[String, ZonedDateTime]("string", _ == _, _ <= _) {
+class DateValidator extends RangeValidator[String, Temporal]("string", _ == _, _ <= _) {
 
-  def validateDefined(v: Any): Result[ZonedDateTime] =
+  private var _zoned = false
+
+  def validateDefined(v: Any): Result[Temporal] =
     try {
       v match {
         case s: String => validateRange(s)
         case _         => invalid
       }
     } catch {
-      case _: java.time.format.DateTimeParseException => Invalid("invalid ISO timestamp")
+      case _: java.time.format.DateTimeParseException =>
+        Invalid(if (_zoned) "invalid date/time" else "invalid ISO timestamp")
     }
 
-  override protected def convert(a: String): ZonedDateTime = ZonedDateTime.parse(a)
+  def zoned: DateValidator = {
+    _zoned = true
+    this
+  }
+
+  override protected def convert(a: String): Temporal = if (_zoned) ZonedDateTime.parse(a) else Instant.parse(a)
 
 }
 
@@ -190,7 +188,7 @@ abstract class Validator[T, R](typeName: String) {
   protected var _strict = false
   protected var _default: js.UndefOr[R] = js.undefined
 
-  def validate(v: Any): Result[R] =
+  def validate(v: Any): Result[_ <: R] =
     if (v == js.undefined)
       if (_required) Invalid(s"$typeName required")
       else Valid(_default)
