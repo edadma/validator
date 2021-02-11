@@ -37,7 +37,7 @@ class Tests extends AnyFreeSpec with Matchers with Testing {
 
   "complex object" in {
     val v = validObject(a = validNumber.min(123).required,
-                        b = validObject(ba = validDateString.max("2021")),
+                        b = validObject(ba = validDate.max("2021")),
                         c = validString.regex("a.*").required).stripUnknown
 
     test(

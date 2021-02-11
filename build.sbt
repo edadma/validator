@@ -1,6 +1,6 @@
 name := "validator"
 
-version := "0.1.5"
+version := "0.1.6"
 
 scalaVersion := "2.13.4"
 
@@ -18,9 +18,9 @@ enablePlugins(ScalaJSPlugin)
 
 enablePlugins(ScalablyTypedConverterPlugin)
 
-//Test / scalaJSUseMainModuleInitializer := true
-//
-//Test / scalaJSUseTestModuleInitializer := false
+Test / scalaJSUseMainModuleInitializer := true
+
+Test / scalaJSUseTestModuleInitializer := false
 
 scalaJSUseMainModuleInitializer := true
 
