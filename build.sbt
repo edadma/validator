@@ -1,10 +1,8 @@
-import sbt.Keys.publishMavenStyle
-
 name := "validator"
 
-version := "0.1.7"
+version := "0.1.8"
 
-scalaVersion := "2.13.5"
+scalaVersion := "2.13.6"
 
 scalacOptions ++= Seq( "-deprecation", "-feature", "-unchecked", "-language:postfixOps", "-language:implicitConversions", "-language:existentials", "-language:dynamics")
 
@@ -31,16 +29,11 @@ scalaJSUseMainModuleInitializer := true
 jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv()
 
 libraryDependencies ++= Seq(
-//  "org.scala-lang.modules" %%% "scala-xml" % "1.2.0"
+  "org.scalatest" %%% "scalatest" % "3.2.9" % "test"
 )
 
 libraryDependencies ++= Seq(
-  "org.scalatest" %%% "scalatest" % "3.1.1" % "test"
-  //"org.scalacheck" %%% "scalacheck" % "1.14.1" % "test"
-)
-
-libraryDependencies ++= Seq(
-  "io.github.cquiroz" %%% "scala-java-time" % "2.0.0"
+  "io.github.cquiroz" %%% "scala-java-time" % "2.1.0"
 )
 
 Test / mainClass := Some( s"${organization.value}.${name.value.replace('-', '_')}.Main" )
